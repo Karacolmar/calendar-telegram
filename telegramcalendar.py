@@ -90,6 +90,9 @@ def create_calendar(year=None, month=None):
     row.append(InlineKeyboardButton("Freitextfeld, bitte!",
                                     callback_data=create_callback_data(
                                         "USER-INPUT", year, month, 0)))
+    row.append(InlineKeyboardButton("Abbrechen",
+                                    callback_data=create_callback_data(
+                                        "STOP", year, month, 0)))
     keyboard.append(row)
 
     return InlineKeyboardMarkup(keyboard)
@@ -107,7 +110,7 @@ def process_calendar_selection(update, context):
              if a date is selected and returning the date if so or if the user
              wants to write it himself.
     """
-    ret_data = (False, None, False)
+    ret_data = (False, None, False, False)
     query = update.callback_query
     (action, year, month, day) = separate_callback_data(query.data)
     curr = datetime.datetime(int(year), int(month), 1)
@@ -122,33 +125,39 @@ def process_calendar_selection(update, context):
                                             "IGNORE", year, month, day)))
         keyboard.append(row)
         context.bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id,
-                              reply_markup=InlineKeyboardMarkup(keyboard))
+                                      chat_id=query.message.chat_id,
+                                      message_id=query.message.message_id,
+                                      reply_markup=InlineKeyboardMarkup(keyboard))
         ret_data = True, datetime.datetime(
-                            int(year), int(month), int(day)), False
+                            int(year), int(month), int(day)), False, False
     elif action == "PREV-MONTH":
         pre = curr - datetime.timedelta(days=1)
         context.bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id,
-                              reply_markup=create_calendar(
-                                  int(pre.year), int(pre.month)))
+                                      chat_id=query.message.chat_id,
+                                      message_id=query.message.message_id,
+                                      reply_markup=create_calendar(
+                                        int(pre.year), int(pre.month)))
     elif action == "NEXT-MONTH":
         ne = curr + datetime.timedelta(days=31)
         context.bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id,
-                              reply_markup=create_calendar(
-                                  int(ne.year), int(ne.month)))
+                                      chat_id=query.message.chat_id,
+                                      message_id=query.message.message_id,
+                                      reply_markup=create_calendar(
+                                        int(ne.year), int(ne.month)))
     elif action == "USER-INPUT":
         try:
             context.bot.delete_message(query.message.chat_id, query.message.message_id)
         except BadRequest:
             pass
-        ret_data = (True, None, True)
+        ret_data = (True, None, True, False)
+    elif action == "STOP":
+        try:
+            context.bot.delete_message(query.message.chat_id, query.message.message_id)
+        except BadRequest:
+            pass
+        ret_data = (False, None, False, True)
     else:
         context.bot.answer_callback_query(callback_query_id=query.id,
-                                  text="Something went wrong!")
+                                          text="Something went wrong!")
         # UNKNOWN
     return ret_data
